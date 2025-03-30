@@ -902,21 +902,21 @@ class WidgetsManager:
                     try:
                         widget.weather_timer.stop()
                     except RuntimeError:
-                        if logger is not None:
-                            logger.warning(f"组件: {widget.path} 的天气定时器已被销毁，跳过操作")
+                        logger.warning(f"组件: {widget.path} 的天气定时器已被销毁，跳过操作")
 
                 if hasattr(widget, 'weather_thread') and widget.weather_thread:
                     try:
-                        widget.weather_thread.terminate()
-                        widget.weather_thread.quit()
-                        widget.weather_thread.wait()
+                        if widget.weather_thread.isRunning():
+                            widget.weather_thread.terminate()
+                            widget.weather_thread.quit()
+                            widget.weather_thread.wait()
+                        else:
+                            logger.debug(f"组件: {widget.path} 的天气线程已完成任务并销毁，无需终止")
                     except RuntimeError:
-                        if logger is not None:
-                            logger.warning(f"组件: {widget.path} 的天气线程已被销毁，跳过操作")
+                        logger.warning(f"组件: {widget.path} 的天气线程终止时发生异常，可能已被销毁")
             except Exception as ex:
                 widget_path = getattr(widget, 'path', 'unknown')
-                if logger is not None:
-                    logger.error(f"清理组件 {widget_path} 时发生异常: {ex}")
+                logger.error(f"清理组件 {widget_path} 时发生异常: {ex}")
         self.widgets.clear()
 
     def __del__(self):
@@ -1210,6 +1210,8 @@ class FloatingWidget(QWidget):  # 浮窗
                 """)
 
     def update_data(self):
+        time_color = QColor(f'#{config_center.read_conf("Color", "floating_time")}')
+        self.activity_countdown.setStyleSheet(f"color: {time_color.name()};")
         if self.animating:  # 执行动画时跳过更新
             return
         self.setWindowOpacity(int(config_center.read_conf('General', 'opacity')) / 100)  # 设置窗口透明度
@@ -1221,10 +1223,15 @@ class FloatingWidget(QWidget):  # 浮窗
         self.current_lesson_name_text.setText(current_lesson_name)
 
         if cd_list:  # 模糊倒计时
-            if cd_list[1] == '00:00':
-                self.activity_countdown.setText(f"< - 分钟")
-            else:
-                self.activity_countdown.setText(f"< {int(cd_list[1].split(':')[0]) + 1} 分钟")
+            blur_floating = config_center.read_conf('General', 'blur_floating_countdown') == '1'
+            if blur_floating:  # 模糊显示
+                if cd_list[1] == '00:00':
+                    self.activity_countdown.setText(f"< - 分钟")
+                else:
+                    minutes = int(cd_list[1].split(':')[0]) + 1
+                    self.activity_countdown.setText(f"< {minutes} 分钟")
+            else:  # 精确显示
+                self.activity_countdown.setText(cd_list[1])
             self.countdown_progress_bar.setValue(cd_list[2])
 
         self.adjustSize_animation()
@@ -2023,11 +2030,14 @@ def closeEvent(self, event):
     if QApplication.instance().closingDown():
         if hasattr(self, 'weather_thread') and self.weather_thread:
             try:
-                self.weather_thread.terminate()  # 终止天气线程
-                self.weather_thread.quit()      # 退出天气线程
-                self.weather_thread.wait()      # 等待线程结束
+                if self.weather_thread.isRunning():
+                    self.weather_thread.terminate()  # 终止天气线程
+                    self.weather_thread.quit()      # 退出天气线程
+                    self.weather_thread.wait()      # 等待线程结束
+                else:
+                    logger.debug("天气线程已完成任务并销毁，无需终止")
             except RuntimeError:
-                logger.warning("天气线程已被销毁，跳过终止操作")
+                logger.warning("天气线程终止过程中发生异常，可能已被销毁")
             finally:
                 del self.weather_thread  # 删除引用以避免重复操作
 
