@@ -925,6 +925,12 @@ class WidgetsManager:
                         widget.weather_timer.stop()
                     except RuntimeError:
                         logger.warning(f"组件: {widget.path} 的天气定时器已被销毁，跳过操作")
+                
+                if hasattr(widget, 'weather_carousel_timer') and widget.weather_carousel_timer:
+                    try:
+                        widget.weather_carousel_timer.stop()
+                    except RuntimeError:
+                        logger.warning(f"组件: {widget.path} 的天气轮播定时器已被销毁，跳过操作")
 
                 if hasattr(widget, 'weather_thread') and widget.weather_thread:
                     try:
@@ -1545,7 +1551,19 @@ class DesktopWidget(QWidget):  # 主要小组件
             self.alert_icon = IconWidget()
             self.alert_icon.setFixedSize(24, 24)
             content_layout.insertWidget(0, self.alert_icon)
-
+            
+            # 初始化轮播相关变量
+            self.weather_hourly_data = []
+            self.current_weather_index = 0
+            self.weather_carousel_timer = QTimer(self)
+            self.weather_carousel_timer.setInterval(10000)  # 固定使用10秒轮播间隔
+            self.weather_carousel_timer.timeout.connect(self.update_weather_carousel)
+            
+            # 初始化当前显示的内容
+            self.current_city = self.findChild(QLabel, 'current_city')
+            self.is_showing_current = True
+            self.current_weather_data = None
+            
             self.get_weather_data()
             self.weather_timer = QTimer(self)
             self.weather_timer.setInterval(30 * 60 * 1000)  # 30分钟更新一次
@@ -1709,8 +1727,6 @@ class DesktopWidget(QWidget):  # 主要小组件
                 else:
                     mgr.show_windows()
                     mgr.hide_status = (True, 0)
-                
-
 
     def rightReleaseEvent(self, event):  # 右键事件
         event.ignore()
@@ -1791,8 +1807,8 @@ class DesktopWidget(QWidget):  # 主要小组件
         cd_list = get_countdown()
 
         if path == 'widget-time.ui':  # 日期显示
-            self.date_text.setText(f'{today.year} 年 {today.month} 月')
-            self.day_text.setText(f'{today.day} 日 {list_.week[today.weekday()]}')
+            self.date_text.setText(f'{today.year} 年 {today.month} 月')
+            self.day_text.setText(f'{today.day} 日 {list_.week[today.weekday()]}')
 
         if path == 'widget-current-activity.ui':  # 当前活动
             self.current_subject.setText(f'  {current_lesson_name}')
@@ -1831,7 +1847,7 @@ class DesktopWidget(QWidget):  # 主要小组件
                     if cd_list[1] == '00:00':
                         self.activity_countdown.setText(f"< - 分钟")
                     else:
-                        self.activity_countdown.setText(f"< {int(cd_list[1].split(':')[0]) + 1} 分钟")
+                        self.activity_countdown.setText(f"< {int(cd_list[1].split(':')[0]) + 1} 分钟")
                 else:
                     self.activity_countdown.setText(cd_list[1])
                 self.ac_title.setText(cd_list[0])
@@ -1841,6 +1857,14 @@ class DesktopWidget(QWidget):  # 主要小组件
             conf.update_countdown(self.cnt)
             self.custom_title.setText(f'距离 {conf.get_cd_text_custom()} 还有')
             self.custom_countdown.setText(conf.get_custom_countdown())
+            
+        if path == 'widget-weather.ui' and hasattr(self, 'weather_carousel_timer'):
+            # 固定使用10秒轮播间隔
+            if self.weather_carousel_timer.interval() != 10000:
+                self.weather_carousel_timer.setInterval(10000)
+                if not self.weather_carousel_timer.isActive() and hasattr(self, 'weather_hourly_data') and self.weather_hourly_data:
+                    self.weather_carousel_timer.start()
+            
         self.update()
 
     def get_weather_data(self):
@@ -1848,6 +1872,90 @@ class DesktopWidget(QWidget):  # 主要小组件
         self.weather_thread = weatherReportThread()
         self.weather_thread.weather_signal.connect(self.update_weather_data)
         self.weather_thread.start()
+
+    def update_weather_carousel(self):
+        """更新天气轮播显示"""
+        if not hasattr(self, 'weather_hourly_data') or not self.weather_hourly_data:
+            return
+            
+        # 如果当前显示的是当前天气，切换到小时天气
+        if self.is_showing_current:
+            self.is_showing_current = False
+            self.show_hourly_weather(0)  # 显示第一个小时天气
+            self.current_weather_index = 0
+        else:
+            # 切换到下一个小时，或切回当前天气
+            self.current_weather_index += 1
+            if self.current_weather_index >= len(self.weather_hourly_data):
+                # 轮播完所有小时天气，回到当前天气
+                self.is_showing_current = True
+                self.show_current_weather()
+            else:
+                # 显示下一个小时天气
+                self.show_hourly_weather(self.current_weather_index)
+    
+    def show_hourly_weather(self, index):
+        """显示指定索引的小时天气"""
+        if not self.weather_hourly_data or index >= len(self.weather_hourly_data):
+            return
+            
+        hourly_data = self.weather_hourly_data[index]
+        if not hourly_data:
+            return
+            
+        try:
+            # 更新图标
+            icon_code = hourly_data.get('icon')
+            if icon_code:
+                self.weather_icon.setPixmap(QPixmap(db.get_weather_icon_by_code(icon_code)))
+                
+            # 更新温度
+            if 'temp' in hourly_data:
+                self.temperature.setText(hourly_data['temp'])
+                
+            # 更新城市和时间信息
+            time_str = hourly_data.get('time', '')
+            desc = hourly_data.get('desc', weather_name if hasattr(self, 'weather_name') else '')
+            self.current_city.setText(f"{db.search_by_num(config_center.read_conf('Weather', 'city'))} · {time_str} {desc}")
+            
+            # 更新背景
+            if hasattr(self, 'backgnd') and icon_code:
+                update_stylesheet = re.sub(
+                    r'border-image: url\((.*?)\);',
+                    f"border-image: url({db.get_weather_stylesheet(icon_code)});",
+                    self.backgnd.styleSheet()
+                )
+                self.backgnd.setStyleSheet(update_stylesheet)
+        except Exception as e:
+            logger.error(f"显示小时天气失败: {e}")
+    
+    def show_current_weather(self):
+        """显示当前天气"""
+        if not hasattr(self, 'current_weather_data') or not self.current_weather_data:
+            return
+            
+        try:
+            # 恢复显示当前天气的图标
+            icon_code = db.get_weather_data('icon', self.current_weather_data)
+            self.weather_icon.setPixmap(QPixmap(db.get_weather_icon_by_code(icon_code)))
+            
+            # 恢复当前温度
+            self.temperature.setText(f"{db.get_weather_data('temp', self.current_weather_data)}")
+            
+            # 恢复城市和天气描述
+            weather_name = db.get_weather_by_code(icon_code)
+            self.current_city.setText(f"{db.search_by_num(config_center.read_conf('Weather', 'city'))} · {weather_name}")
+            
+            # 恢复背景
+            if hasattr(self, 'backgnd'):
+                update_stylesheet = re.sub(
+                    r'border-image: url\((.*?)\);',
+                    f"border-image: url({db.get_weather_stylesheet(icon_code)});",
+                    self.backgnd.styleSheet()
+                )
+                self.backgnd.setStyleSheet(update_stylesheet)
+        except Exception as e:
+            logger.error(f"恢复显示当前天气失败: {e}")
 
     def detect_weather_code_changed(self):
         current_code = config_center.read_conf('Weather')
@@ -1871,14 +1979,44 @@ class DesktopWidget(QWidget):  # 主要小组件
         if type(weather_data) is dict and hasattr(self, 'weather_icon') and 'error' not in weather_data:
             logger.success('已获取天气数据')
             alert_data = weather_data.get('alert')
-            weather_data = weather_data.get('now')
-            weather_data_temp = weather_data
+            hourly_data = weather_data.get('hourly')
+            
+            # 保存当前天气数据用于轮播
+            self.current_weather_data = weather_data.get('now')
+            weather_data_temp = self.current_weather_data
 
-            weather_name = db.get_weather_by_code(db.get_weather_data('icon', weather_data))
+            weather_name = db.get_weather_by_code(db.get_weather_data('icon', self.current_weather_data))
+            
+            # 处理小时预报数据
+            self.weather_hourly_data = []
+            if hourly_data:
+                # 获取未来3小时天气
+                for i in range(min(3, 24)):  # 最多处理24小时数据，避免API返回超出预期
+                    hourly_item = db.get_hourly_weather_data(hourly_data, i)
+                    if hourly_item:
+                        self.weather_hourly_data.append(hourly_item)
+                
+                # 如果成功获取了小时数据，启动轮播定时器
+                if self.weather_hourly_data:
+                    if not self.weather_carousel_timer.isActive():
+                        # 固定使用10秒轮播间隔
+                        self.weather_carousel_timer.setInterval(10000)  
+                        self.weather_carousel_timer.start()
+                        logger.info("已启动天气轮播，固定间隔10秒")
+                else:
+                    if self.weather_carousel_timer.isActive():
+                        self.weather_carousel_timer.stop()
+            else:
+                if self.weather_carousel_timer.isActive():
+                    self.weather_carousel_timer.stop()
+            
+            # 显示当前天气
+            self.is_showing_current = True
+            
             current_city = self.findChild(QLabel, 'current_city')
             try:  # 天气组件
                 self.weather_icon.setPixmap(
-                    QPixmap(db.get_weather_icon_by_code(db.get_weather_data('icon', weather_data)))
+                    QPixmap(db.get_weather_icon_by_code(db.get_weather_data('icon', self.current_weather_data)))
                 )
                 self.alert_icon.hide()
                 if db.is_supported_alert():
@@ -1890,12 +2028,12 @@ class DesktopWidget(QWidget):  # 主要小组件
                         )
                         self.alert_icon.show()
 
-                self.temperature.setText(f"{db.get_weather_data('temp', weather_data)}")
+                self.temperature.setText(f"{db.get_weather_data('temp', self.current_weather_data)}")
                 current_city.setText(f"{db.search_by_num(config_center.read_conf('Weather', 'city'))} · "
                                      f"{weather_name}")
                 update_stylesheet = re.sub(
                     r'border-image: url\((.*?)\);',
-                    f"border-image: url({db.get_weather_stylesheet(db.get_weather_data('icon', weather_data))});",
+                    f"border-image: url({db.get_weather_stylesheet(db.get_weather_data('icon', self.current_weather_data))});",
                     self.backgnd.styleSheet()
                 )
                 self.backgnd.setStyleSheet(update_stylesheet)
@@ -1927,7 +2065,7 @@ class DesktopWidget(QWidget):  # 主要小组件
             ex_menu = ExtraMenu()
             ex_menu.show()
             ex_menu.destroyed.connect(self.cleanup_extra_menu)
-            logger.info('打开“额外选项”')
+            logger.info('打开"额外选项"')
         else:
             ex_menu.raise_()
             ex_menu.activateWindow()
@@ -2060,6 +2198,46 @@ class DesktopWidget(QWidget):  # 主要小组件
         else:
             event.ignore()
 
+    def closeEvent(self, event):
+        if QApplication.instance().closingDown():
+            if hasattr(self, 'weather_thread') and self.weather_thread:
+                try:
+                    if self.weather_thread.isRunning():
+                        self.weather_thread.terminate()
+                        self.weather_thread.quit()
+                        self.weather_thread.wait()
+                    else:
+                        logger.debug("天气线程已完成任务并销毁，无需终止")
+                except RuntimeError:
+                    logger.warning("天气线程终止过程中发生异常，可能已被销毁")
+                finally:
+                    del self.weather_thread
+
+            if hasattr(self, 'weather_timer') and self.weather_timer:
+                try:
+                    self.weather_timer.stop()
+                except RuntimeError:
+                    logger.warning("天气定时器已被销毁，跳过停止操作")
+                finally:
+                    del self.weather_timer
+                    
+            if hasattr(self, 'weather_carousel_timer') and self.weather_carousel_timer:
+                try:
+                    self.weather_carousel_timer.stop()
+                except RuntimeError:
+                    logger.warning("天气轮播定时器已被销毁，跳过停止操作")
+                finally:
+                    del self.weather_carousel_timer
+                    
+            event.accept()
+            stop(0)
+
+        for child in self.findChildren(QObject):
+            child.deleteLater()
+        super().closeEvent(event)
+        self.deleteLater()
+        self.destroy()
+
     def stop(self):
         if mgr:
             mgr.cleanup_resources()
@@ -2076,23 +2254,32 @@ def closeEvent(self, event):
         if hasattr(self, 'weather_thread') and self.weather_thread:
             try:
                 if self.weather_thread.isRunning():
-                    self.weather_thread.terminate()  # 终止天气线程
-                    self.weather_thread.quit()      # 退出天气线程
-                    self.weather_thread.wait()      # 等待线程结束
+                    self.weather_thread.terminate()
+                    self.weather_thread.quit()
+                    self.weather_thread.wait()
                 else:
                     logger.debug("天气线程已完成任务并销毁，无需终止")
             except RuntimeError:
                 logger.warning("天气线程终止过程中发生异常，可能已被销毁")
             finally:
-                del self.weather_thread  # 删除引用以避免重复操作
+                del self.weather_thread
 
         if hasattr(self, 'weather_timer') and self.weather_timer:
             try:
-                self.weather_timer.stop()  # 停止定时器
+                self.weather_timer.stop()
             except RuntimeError:
                 logger.warning("天气定时器已被销毁，跳过停止操作")
             finally:
-                del self.weather_timer  # 删除引用以避免重复操作
+                del self.weather_timer
+                
+        if hasattr(self, 'weather_carousel_timer') and self.weather_carousel_timer:
+            try:
+                self.weather_carousel_timer.stop()
+            except RuntimeError:
+                logger.warning("天气轮播定时器已被销毁，跳过停止操作")
+            finally:
+                del self.weather_carousel_timer
+                
         event.accept()
         stop(0)
 

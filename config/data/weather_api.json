@@ -21,6 +21,16 @@
           "红色": "red.png"
         }
       },
+      "hourly": {
+        "url": "https://weatherapi.market.xiaomi.com/wtr-v3/weather/hourly?latitude=0&longitude=0&locationKey=weathercn:{location_key}&appKey=weather20151024&sign=zUFJoAR2ZVrDy1vF3D07&isGlobal=false&locale=zh_cn",
+        "parameters": {
+          "icon": "weatherHourly.index.weather",
+          "temp": "weatherHourly.index.temperature.value",
+          "time": "weatherHourly.index.pubTime",
+          "desc": "weatherHourly.index.weather"
+        },
+        "time_input_format": "%Y-%m-%d %H:%M:%S"
+      },
       "database": "xiaomi_weather.db",
       "return_desc": false
     },
@@ -38,6 +48,16 @@
           "Orange": "orange.png",
           "Red": "red.png"
         }
+      },
+      "hourly": {
+        "url": "https://devapi.qweather.com/v7/weather/24h?location={location_key}&key={key}",
+        "parameters": {
+          "icon": "hourly.index.icon",
+          "temp": "hourly.index.temp",
+          "time": "hourly.index.fxTime",
+          "desc": "hourly.index.text"
+        },
+        "time_input_format": "%Y-%m-%dT%H:%M%z"
       },
       "database": "xiaomi_weather.db",
       "return_desc": false

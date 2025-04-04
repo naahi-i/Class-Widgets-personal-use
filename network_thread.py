@@ -450,10 +450,25 @@ class weatherReportThread(QThread):  # 获取最新天气信息
         days = 1
         key = config_center.read_conf('Weather', 'api_key')
         url = db.get_weather_url().format(location_key=location_key, days=days, key=key)
+        hourly_url = db.get_weather_hourly_url()
         alert_url = db.get_weather_alert_url()
         try:
-            data_group = {'now': {}, 'alert': {}}
+            data_group = {'now': {}, 'alert': {}, 'hourly': {}}
             response_now = requests.get(url, proxies=proxies)  # 禁用代理
+            
+            # 获取小时预报数据
+            if hourly_url and hourly_url != 'NotSupported':
+                try:
+                    hourly_url = hourly_url.format(location_key=location_key, key=key)
+                    response_hourly = requests.get(hourly_url, proxies=proxies)
+                    if response_hourly.status_code == 200:
+                        hourly_data = response_hourly.json()
+                        data_group['hourly'] = hourly_data
+                    else:
+                        logger.error(f"获取小时天气信息失败：{response_hourly.status_code}")
+                except Exception as e:
+                    logger.error(f"获取小时天气信息异常：{e}")
+            
             if alert_url == 'NotSupported':
                 logger.warning(f"当前API不支持天气预警信息")
             elif alert_url is None:

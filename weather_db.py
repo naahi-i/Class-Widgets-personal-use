@@ -221,6 +221,91 @@ def get_weather_data(key='temp', weather_data=None):  # 获取天气数据
     return value
 
 
+def get_weather_hourly_url():
+    """获取小时天气URL"""
+    if config_center.read_conf('Weather', 'api') in api_config['weather_api_list']:
+        api_name = config_center.read_conf('Weather', 'api')
+        if 'hourly' in api_config['weather_api_parameters'][api_name]:
+            return api_config['weather_api_parameters'][api_name]['hourly']['url']
+    return 'NotSupported'
+
+def get_hourly_weather_data(hourly_data, index=0):
+    """获取小时天气数据
+    
+    Args:
+        hourly_data: 小时天气数据
+        index: 小时索引，0为第一小时，1为第二小时，以此类推
+        
+    Returns:
+        dict: 包含时间、温度、天气图标、天气描述的字典
+    """
+    if not hourly_data:
+        return None
+        
+    api_name = config_center.read_conf('Weather', 'api')
+    if api_name not in api_config['weather_api_parameters']:
+        return None
+        
+    api_params = api_config['weather_api_parameters'][api_name]
+    if 'hourly' not in api_params:
+        return None
+    
+    hourly_params = api_params['hourly']
+    try:
+        result = {}
+        # 遍历参数并获取值
+        for param_name, param_path in hourly_params['parameters'].items():
+            path_parts = param_path.split('.')
+            value = hourly_data
+            
+            # 处理索引，比如 hourly.3.temp
+            for part in path_parts:
+                if part == 'index':
+                    # 替换索引
+                    value = value[index]
+                elif part.isdigit():
+                    # 数字索引
+                    value = value[int(part)]
+                elif part in value:
+                    value = value[part]
+                else:
+                    logger.error(f"获取小时天气参数失败: {param_path}")
+                    value = None
+                    break
+            
+            if value is not None:
+                result[param_name] = value
+                
+        # 处理特定字段
+        if 'icon' in result and api_params.get('return_desc', False):
+            result['icon'] = get_weather_code_by_description(result['icon'])
+            
+        if 'time' in result:
+            # 格式化时间为 HH:MM
+            try:
+                time_format = hourly_params.get('time_format', '%H:%M')
+                if isinstance(result['time'], str):
+                    # 使用正确的 datetime 模块
+                    from datetime import datetime
+                    time_obj = datetime.strptime(result['time'], hourly_params.get('time_input_format', '%Y-%m-%d %H:%M:%S'))
+                    result['time'] = time_obj.strftime(time_format)
+                elif isinstance(result['time'], int):
+                    # 时间戳处理
+                    from datetime import datetime
+                    time_obj = datetime.fromtimestamp(result['time'])
+                    result['time'] = time_obj.strftime(time_format)
+            except Exception as e:
+                logger.error(f"格式化小时天气时间失败: {e}")
+                
+        if 'temp' in result and not isinstance(result['temp'], str):
+            result['temp'] = f"{result['temp']}°"
+            
+        return result
+    except Exception as e:
+        logger.error(f"解析小时天气数据失败: {e}")
+        return None
+
+
 if __name__ == '__main__':
     # 测试代码
     try:
