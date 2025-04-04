@@ -1619,7 +1619,7 @@ class DesktopWidget(QWidget):  # 主要小组件
         # 将这段代码添加到weather组件初始化部分
         elif path == 'widget-weather.ui':  # 天气组件
             content_layout = self.findChild(QHBoxLayout, 'horizontalLayout_2')
-            content_layout.setSpacing(16)
+            content_layout.setSpacing(0)
             self.temperature = self.findChild(QLabel, 'temperature')
             self.weather_icon = self.findChild(QLabel, 'weather_icon')
             self.alert_icon = IconWidget()

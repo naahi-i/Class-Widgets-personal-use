@@ -297,8 +297,15 @@ def get_hourly_weather_data(hourly_data, index=0):
             except Exception as e:
                 logger.error(f"格式化小时天气时间失败: {e}")
                 
-        if 'temp' in result and not isinstance(result['temp'], str):
-            result['temp'] = f"{result['temp']}°"
+        # Handle temperature formatting with proper units
+        if 'temp' in result:
+            # Convert to string if it's not already
+            if not isinstance(result['temp'], str):
+                result['temp'] = str(result['temp'])
+            
+            # Add degree symbol if not already present
+            if not result['temp'].endswith('°'):
+                result['temp'] = f"{result['temp']}°"
             
         return result
     except Exception as e:
