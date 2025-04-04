@@ -14,6 +14,7 @@ from typing import Optional
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QRect, QEasingCurve, QSize, QPoint, QUrl, QObject
+from PyQt5.QtCore import QParallelAnimationGroup as QParallel
 from PyQt5.QtGui import QColor, QIcon, QPixmap, QPainter, QDesktopServices
 from PyQt5.QtGui import QFontDatabase
 from PyQt5.QtSvg import QSvgRenderer
@@ -969,7 +970,45 @@ class openProgressDialog(QWidget):
         super().__init__()
         time = int(config_center.read_conf('Plugin', 'auto_delay'))
         self.action = action
+        if hasattr(self, 'weather_icon'):
+            self.weather_icon_effect = QGraphicsOpacityEffect(self.weather_icon)
+            self.weather_icon_effect.setOpacity(1.0)
+            self.weather_icon.setGraphicsEffect(self.weather_icon_effect)
+            self.weather_icon.__setattr__("opacity", property(
+                lambda self: self.graphicsEffect().opacity(),
+                lambda self, value: self.graphicsEffect().setOpacity(value)
+            ))
 
+        if hasattr(self, 'temperature'):
+            self.temperature_effect = QGraphicsOpacityEffect(self.temperature)
+            self.temperature_effect.setOpacity(1.0)
+            self.temperature.setGraphicsEffect(self.temperature_effect)
+            self.temperature.__setattr__("opacity", property(
+                lambda self: self.graphicsEffect().opacity(),
+                lambda self, value: self.graphicsEffect().setOpacity(value)
+            ))
+
+        if hasattr(self, 'current_city'):
+            self.current_city_effect = QGraphicsOpacityEffect(self.current_city)
+            self.current_city_effect.setOpacity(1.0)
+            self.current_city.setGraphicsEffect(self.current_city_effect)
+            self.current_city.__setattr__("opacity", property(
+                lambda self: self.graphicsEffect().opacity(),
+                lambda self, value: self.graphicsEffect().setOpacity(value)
+            ))
+
+        if hasattr(self, 'backgnd'):
+            self.backgnd_effect = QGraphicsOpacityEffect(self.backgnd)
+            self.backgnd_effect.setOpacity(1.0)
+            self.backgnd.setGraphicsEffect(self.backgnd_effect)
+            self.backgnd.__setattr__("opacity", property(
+                lambda self: self.graphicsEffect().opacity(),
+                lambda self, value: self.graphicsEffect().setOpacity(value)
+            ))
+
+        # 初始化动画状态标记
+        self._carousel_animating = False
+        
         screen_geometry = app.primaryScreen().availableGeometry()
         self.screen_width = screen_geometry.width()
         self.screen_height = screen_geometry.height()
@@ -1029,7 +1068,41 @@ class openProgressDialog(QWidget):
         shadow_effect.setYOffset(6)
         shadow_effect.setColor(QColor(0, 0, 0, 80))
         backgnd.setGraphicsEffect(shadow_effect)
+        
+        self.weather_icon_effect = QGraphicsOpacityEffect(self.weather_icon)
+        self.weather_icon_effect.setOpacity(1.0)
+        self.weather_icon.setGraphicsEffect(self.weather_icon_effect)
+        self.weather_icon.__setattr__("opacity", property(
+            lambda self: self.graphicsEffect().opacity(),
+            lambda self, value: self.graphicsEffect().setOpacity(value)
+        ))
 
+        self.temperature_effect = QGraphicsOpacityEffect(self.temperature)
+        self.temperature_effect.setOpacity(1.0)
+        self.temperature.setGraphicsEffect(self.temperature_effect)
+        self.temperature.__setattr__("opacity", property(
+            lambda self: self.graphicsEffect().opacity(),
+            lambda self, value: self.graphicsEffect().setOpacity(value)
+        ))
+
+        self.current_city_effect = QGraphicsOpacityEffect(self.current_city)
+        self.current_city_effect.setOpacity(1.0)
+        self.current_city.setGraphicsEffect(self.current_city_effect)
+        self.current_city.__setattr__("opacity", property(
+            lambda self: self.graphicsEffect().opacity(),
+            lambda self, value: self.graphicsEffect().setOpacity(value)
+        ))
+
+        self.backgnd_effect = QGraphicsOpacityEffect(self.backgnd)
+        self.backgnd_effect.setOpacity(1.0)
+        self.backgnd.setGraphicsEffect(self.backgnd_effect)
+        self.backgnd.__setattr__("opacity", property(
+            lambda self: self.graphicsEffect().opacity(),
+            lambda self, value: self.graphicsEffect().setOpacity(value)
+        ))
+
+        # 初始化动画状态标记
+        self._carousel_animating = False
     def init_font(self):
         font_path = f'{base_directory}/font/HarmonyOS_Sans_SC_Bold.ttf'
         font_id = QFontDatabase.addApplicationFont(font_path)
@@ -1543,6 +1616,7 @@ class DesktopWidget(QWidget):  # 主要小组件
             self.custom_title = self.findChild(QLabel, 'countdown_custom_title')
             self.custom_countdown = self.findChild(QLabel, 'custom_countdown')
 
+        # 将这段代码添加到weather组件初始化部分
         elif path == 'widget-weather.ui':  # 天气组件
             content_layout = self.findChild(QHBoxLayout, 'horizontalLayout_2')
             content_layout.setSpacing(16)
@@ -1552,6 +1626,41 @@ class DesktopWidget(QWidget):  # 主要小组件
             self.alert_icon.setFixedSize(24, 24)
             content_layout.insertWidget(0, self.alert_icon)
             
+            # 为天气组件元素添加透明度效果支持
+            self.weather_icon_effect = QGraphicsOpacityEffect(self.weather_icon)
+            self.weather_icon_effect.setOpacity(1.0)
+            self.weather_icon.setGraphicsEffect(self.weather_icon_effect)
+            self.weather_icon.__setattr__("opacity", property(
+                lambda self: self.graphicsEffect().opacity(),
+                lambda self, value: self.graphicsEffect().setOpacity(value)
+            ))
+
+            self.temperature_effect = QGraphicsOpacityEffect(self.temperature)
+            self.temperature_effect.setOpacity(1.0)
+            self.temperature.setGraphicsEffect(self.temperature_effect)
+            self.temperature.__setattr__("opacity", property(
+                lambda self: self.graphicsEffect().opacity(),
+                lambda self, value: self.graphicsEffect().setOpacity(value)
+            ))
+
+            self.current_city = self.findChild(QLabel, 'current_city')
+            self.current_city_effect = QGraphicsOpacityEffect(self.current_city)
+            self.current_city_effect.setOpacity(1.0)
+            self.current_city.setGraphicsEffect(self.current_city_effect)
+            self.current_city.__setattr__("opacity", property(
+                lambda self: self.graphicsEffect().opacity(),
+                lambda self, value: self.graphicsEffect().setOpacity(value)
+            ))
+            
+            # 为背景添加透明度效果
+            self.backgnd_effect = QGraphicsOpacityEffect(self.backgnd)
+            self.backgnd_effect.setOpacity(1.0)
+            self.backgnd.setGraphicsEffect(self.backgnd_effect)
+            self.backgnd.__setattr__("opacity", property(
+                lambda self: self.graphicsEffect().opacity(),
+                lambda self, value: self.graphicsEffect().setOpacity(value)
+            ))
+            
             # 初始化轮播相关变量
             self.weather_hourly_data = []
             self.current_weather_index = 0
@@ -1560,9 +1669,11 @@ class DesktopWidget(QWidget):  # 主要小组件
             self.weather_carousel_timer.timeout.connect(self.update_weather_carousel)
             
             # 初始化当前显示的内容
-            self.current_city = self.findChild(QLabel, 'current_city')
             self.is_showing_current = True
             self.current_weather_data = None
+            
+            # 初始化动画状态标记
+            self._carousel_animating = False
             
             self.get_weather_data()
             self.weather_timer = QTimer(self)
@@ -1877,11 +1988,15 @@ class DesktopWidget(QWidget):  # 主要小组件
         """更新天气轮播显示"""
         if not hasattr(self, 'weather_hourly_data') or not self.weather_hourly_data:
             return
-            
+        
+        # 避免动画进行中时触发新轮播
+        if hasattr(self, '_carousel_animating') and self._carousel_animating:
+            return
+        
         # 如果当前显示的是当前天气，切换到小时天气
         if self.is_showing_current:
             self.is_showing_current = False
-            self.show_hourly_weather(0)  # 显示第一个小时天气
+            self._animate_weather_transition(0)  # 动画切换到第一个小时天气
             self.current_weather_index = 0
         else:
             # 切换到下一个小时，或切回当前天气
@@ -1889,10 +2004,221 @@ class DesktopWidget(QWidget):  # 主要小组件
             if self.current_weather_index >= len(self.weather_hourly_data):
                 # 轮播完所有小时天气，回到当前天气
                 self.is_showing_current = True
-                self.show_current_weather()
+                self._animate_weather_transition(None)  # 动画切换回当前天气
             else:
                 # 显示下一个小时天气
-                self.show_hourly_weather(self.current_weather_index)
+                self._animate_weather_transition(self.current_weather_index)
+
+    def _animate_weather_transition(self, index):
+        """带动画效果的天气轮播切换
+        
+        参数:
+        index: 小时天气的索引，如果为None则表示回到当前天气
+        """
+        self._carousel_animating = True
+        
+        # 准备下一个要显示的数据
+        if index is not None:
+            # 小时天气数据
+            next_data = self.weather_hourly_data[index]
+            next_icon = next_data.get('icon')
+            next_temp = next_data.get('temp')
+            time_str = next_data.get('time', '')
+            desc = next_data.get('desc', weather_name if hasattr(self, 'weather_name') else '')
+            next_city_text = f"{db.search_by_num(config_center.read_conf('Weather', 'city'))} · {time_str} {desc}"
+        else:
+            # 当前天气数据
+            next_icon = db.get_weather_data('icon', self.current_weather_data)
+            next_temp = f"{db.get_weather_data('temp', self.current_weather_data)}"
+            weather_name = db.get_weather_by_code(next_icon)
+            next_city_text = f"{db.search_by_num(config_center.read_conf('Weather', 'city'))} · {weather_name}"
+        
+        # 为天气图标准备下一张图片
+        next_icon_pixmap = QPixmap(db.get_weather_icon_by_code(next_icon))
+        
+        # 设置淡出动画持续时间
+        fade_out_duration = 300
+        
+        # 创建并行动画组
+        self.carousel_animation_group = QParallel()
+        
+        # 为每个元素添加淡出动画
+        
+        # 天气图标淡出动画
+        self.icon_fade_out = QPropertyAnimation(self.weather_icon_effect, b"opacity")
+        self.icon_fade_out.setDuration(fade_out_duration)
+        self.icon_fade_out.setStartValue(1.0)
+        self.icon_fade_out.setEndValue(0.0)
+        self.icon_fade_out.setEasingCurve(QEasingCurve.Type.OutQuad)
+        self.carousel_animation_group.addAnimation(self.icon_fade_out)
+        
+        # 天气图标位移动画 - 淡出时略微上移
+        if hasattr(self.weather_icon, "pos"):
+            self.icon_pos_out = QPropertyAnimation(self.weather_icon, b"pos")
+            self.icon_pos_out.setDuration(fade_out_duration)
+            orig_pos = self.weather_icon.pos()
+            self.icon_pos_out.setStartValue(orig_pos)
+            self.icon_pos_out.setEndValue(QPoint(orig_pos.x(), orig_pos.y() - 8))
+            self.icon_pos_out.setEasingCurve(QEasingCurve.Type.OutQuad)
+            self.carousel_animation_group.addAnimation(self.icon_pos_out)
+        
+        # 温度标签淡出动画
+        self.temp_fade_out = QPropertyAnimation(self.temperature_effect, b"opacity")
+        self.temp_fade_out.setDuration(fade_out_duration)
+        self.temp_fade_out.setStartValue(1.0)
+        self.temp_fade_out.setEndValue(0.0)
+        self.temp_fade_out.setEasingCurve(QEasingCurve.Type.OutQuad)
+        self.carousel_animation_group.addAnimation(self.temp_fade_out)
+        
+        # 温度标签位移动画 - 淡出时略微上移
+        if hasattr(self.temperature, "pos"):
+            self.temp_pos_out = QPropertyAnimation(self.temperature, b"pos")
+            self.temp_pos_out.setDuration(fade_out_duration)
+            orig_pos = self.temperature.pos()
+            self.temp_pos_out.setStartValue(orig_pos)
+            self.temp_pos_out.setEndValue(QPoint(orig_pos.x(), orig_pos.y() - 8))
+            self.temp_pos_out.setEasingCurve(QEasingCurve.Type.OutQuad)
+            self.carousel_animation_group.addAnimation(self.temp_pos_out)
+        
+        # 城市标签淡出动画
+        self.city_fade_out = QPropertyAnimation(self.current_city_effect, b"opacity")
+        self.city_fade_out.setDuration(fade_out_duration)
+        self.city_fade_out.setStartValue(1.0)
+        self.city_fade_out.setEndValue(0.0)
+        self.city_fade_out.setEasingCurve(QEasingCurve.Type.OutQuad)
+        self.carousel_animation_group.addAnimation(self.city_fade_out)
+        
+        # 城市标签位移动画 - 淡出时略微上移
+        if hasattr(self.current_city, "pos"):
+            self.city_pos_out = QPropertyAnimation(self.current_city, b"pos")
+            self.city_pos_out.setDuration(fade_out_duration)
+            orig_pos = self.current_city.pos()
+            self.city_pos_out.setStartValue(orig_pos)
+            self.city_pos_out.setEndValue(QPoint(orig_pos.x(), orig_pos.y() - 8))
+            self.city_pos_out.setEasingCurve(QEasingCurve.Type.OutQuad)
+            self.carousel_animation_group.addAnimation(self.city_pos_out)
+        
+        # 背景淡出动画
+        if hasattr(self, 'backgnd_effect'):
+            self.bg_fade_out = QPropertyAnimation(self.backgnd_effect, b"opacity")
+            self.bg_fade_out.setDuration(fade_out_duration)
+            self.bg_fade_out.setStartValue(1.0)
+            self.bg_fade_out.setEndValue(0.85)
+            self.bg_fade_out.setEasingCurve(QEasingCurve.Type.OutQuad)
+            self.carousel_animation_group.addAnimation(self.bg_fade_out)
+        
+        # 动画组连接，淡出后执行更新内容
+        def update_contents():
+            # 更新内容
+            self.weather_icon.setPixmap(next_icon_pixmap)
+            self.temperature.setText(next_temp)
+            self.current_city.setText(next_city_text)
+            
+            # 恢复位置
+            if hasattr(self.weather_icon, "pos"):
+                orig_pos = self.weather_icon.pos()
+                self.weather_icon.move(orig_pos.x(), orig_pos.y() + 8)
+            
+            if hasattr(self.temperature, "pos"):
+                orig_pos = self.temperature.pos()
+                self.temperature.move(orig_pos.x(), orig_pos.y() + 8)
+                
+            if hasattr(self.current_city, "pos"):
+                orig_pos = self.current_city.pos()
+                self.current_city.move(orig_pos.x(), orig_pos.y() + 8)
+            
+            # 更新背景
+            if hasattr(self, 'backgnd'):
+                update_stylesheet = re.sub(
+                    r'border-image: url\((.*?)\);',
+                    f"border-image: url({db.get_weather_stylesheet(next_icon)});",
+                    self.backgnd.styleSheet()
+                )
+                self.backgnd.setStyleSheet(update_stylesheet)
+            
+            # 创建淡入动画组
+            fade_in_duration = 400
+            self.fade_in_group = QParallel()
+            
+            # 天气图标淡入动画
+            self.icon_fade_in = QPropertyAnimation(self.weather_icon_effect, b"opacity")
+            self.icon_fade_in.setDuration(fade_in_duration)
+            self.icon_fade_in.setStartValue(0.0)
+            self.icon_fade_in.setEndValue(1.0)
+            self.icon_fade_in.setEasingCurve(QEasingCurve.Type.InOutQuad)
+            self.fade_in_group.addAnimation(self.icon_fade_in)
+            
+            # 天气图标位移动画 - 淡入时从下方进入
+            if hasattr(self.weather_icon, "pos"):
+                self.icon_pos_in = QPropertyAnimation(self.weather_icon, b"pos")
+                self.icon_pos_in.setDuration(fade_in_duration)
+                orig_pos = self.weather_icon.pos()
+                self.icon_pos_in.setStartValue(QPoint(orig_pos.x(), orig_pos.y()))
+                self.icon_pos_in.setEndValue(QPoint(orig_pos.x(), orig_pos.y() - 8))
+                self.icon_pos_in.setEasingCurve(QEasingCurve.Type.OutQuad)
+                self.fade_in_group.addAnimation(self.icon_pos_in)
+            
+            # 温度标签淡入动画
+            self.temp_fade_in = QPropertyAnimation(self.temperature_effect, b"opacity")
+            self.temp_fade_in.setDuration(fade_in_duration)
+            self.temp_fade_in.setStartValue(0.0)
+            self.temp_fade_in.setEndValue(1.0)
+            self.temp_fade_in.setEasingCurve(QEasingCurve.Type.InOutQuad)
+            self.fade_in_group.addAnimation(self.temp_fade_in)
+            
+            # 温度标签位移动画 - 淡入时从下方进入
+            if hasattr(self.temperature, "pos"):
+                self.temp_pos_in = QPropertyAnimation(self.temperature, b"pos")
+                self.temp_pos_in.setDuration(fade_in_duration)
+                orig_pos = self.temperature.pos()
+                self.temp_pos_in.setStartValue(QPoint(orig_pos.x(), orig_pos.y()))
+                self.temp_pos_in.setEndValue(QPoint(orig_pos.x(), orig_pos.y() - 8))
+                self.temp_pos_in.setEasingCurve(QEasingCurve.Type.OutQuad)
+                self.fade_in_group.addAnimation(self.temp_pos_in)
+            
+            # 城市标签淡入动画
+            self.city_fade_in = QPropertyAnimation(self.current_city_effect, b"opacity")
+            self.city_fade_in.setDuration(fade_in_duration)
+            self.city_fade_in.setStartValue(0.0)
+            self.city_fade_in.setEndValue(1.0)
+            self.city_fade_in.setEasingCurve(QEasingCurve.Type.InOutQuad)
+            self.fade_in_group.addAnimation(self.city_fade_in)
+            
+            # 城市标签位移动画 - 淡入时从下方进入
+            if hasattr(self.current_city, "pos"):
+                self.city_pos_in = QPropertyAnimation(self.current_city, b"pos")
+                self.city_pos_in.setDuration(fade_in_duration)
+                orig_pos = self.current_city.pos()
+                self.city_pos_in.setStartValue(QPoint(orig_pos.x(), orig_pos.y()))
+                self.city_pos_in.setEndValue(QPoint(orig_pos.x(), orig_pos.y() - 8))
+                self.city_pos_in.setEasingCurve(QEasingCurve.Type.OutQuad)
+                self.fade_in_group.addAnimation(self.city_pos_in)
+            
+            # 背景淡入动画
+            if hasattr(self, 'backgnd_effect'):
+                self.bg_fade_in = QPropertyAnimation(self.backgnd_effect, b"opacity")
+                self.bg_fade_in.setDuration(fade_in_duration)
+                self.bg_fade_in.setStartValue(0.85)
+                self.bg_fade_in.setEndValue(1.0)
+                self.bg_fade_in.setEasingCurve(QEasingCurve.Type.InOutQuad)
+                self.fade_in_group.addAnimation(self.bg_fade_in)
+            
+            # 淡入动画完成后清理
+            def finish_animation():
+                self._carousel_animating = False
+                if hasattr(self, 'carousel_animation_group'):
+                    del self.carousel_animation_group
+                if hasattr(self, 'fade_in_group'):
+                    del self.fade_in_group
+            
+            self.fade_in_group.finished.connect(finish_animation)
+            self.fade_in_group.start()
+        
+        self.carousel_animation_group.finished.connect(update_contents)
+        self.carousel_animation_group.start()
+        
+        self.carousel_animation_group.finished.connect(update_contents)
+        self.carousel_animation_group.start()
     
     def show_hourly_weather(self, index):
         """显示指定索引的小时天气"""
