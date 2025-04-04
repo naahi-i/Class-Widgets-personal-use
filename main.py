@@ -1743,22 +1743,45 @@ class DesktopWidget(QWidget):  # 主要小组件
                 mgr.decide_to_hide()
             else:
                 mgr.show_windows()
-        elif hide_mode == '3': # 灵活隐藏
-            if mgr.hide_status is None:
-                mgr.hide_status = (False, current_state)
-            elif mgr.hide_status[0] and mgr.hide_status[1] == current_state:
-                mgr.hide_status = (False, current_state)
-            elif not mgr.hide_status[0]:
-                mgr.hide_status = (False, current_state)
-            if mgr.hide_status[1]:
-                if not current_lesson_name in excluded_lessons:
-                    mgr.decide_to_hide()
+        elif hide_mode == '3': # 拖堂模式
+            if current_state:  # 上课时间
+                if mgr.hide_status is None:
+                    mgr.hide_status = (False, current_state)
+                elif mgr.hide_status[0] and mgr.hide_status[1] == current_state:
+                    mgr.hide_status = (False, current_state)
+                elif not mgr.hide_status[0]:
+                    mgr.hide_status = (False, current_state)
+                    
+                if mgr.hide_status[1]:
+                    if not current_lesson_name in excluded_lessons:
+                        # 上课时使用全隐藏
+                        if config_center.read_conf('General', 'hide_method') == '0':  # 正常
+                            mgr.full_hide_windows()  # 使用全隐藏替代普通隐藏
+                        else:
+                            mgr.decide_to_hide()  # 使用配置的隐藏方式
+                    else:
+                        mgr.show_windows()
                 else:
                     mgr.show_windows()
-            else:
-                mgr.show_windows()
-
-            
+            else:  # 下课时间
+                if mgr.hide_status is None:
+                    mgr.hide_status = (False, current_state)
+                elif mgr.hide_status[0] and mgr.hide_status[1] == current_state:
+                    mgr.hide_status = (False, current_state)
+                elif not mgr.hide_status[0]:
+                    mgr.hide_status = (False, current_state)
+                    
+                if mgr.hide_status[1]:
+                    if not current_lesson_name in excluded_lessons:
+                        # 下课时使用半隐藏
+                        if config_center.read_conf('General', 'hide_method') == '0':  # 正常
+                            mgr.hide_windows()  # 使用半隐藏
+                        else:
+                            mgr.hide_windows()  # 使用半隐藏
+                    else:
+                        mgr.show_windows()
+                else:
+                    mgr.show_windows()
 
         if conf.is_temp_week():  # 调休日
             current_week = config_center.read_conf('Temp', 'set_week')

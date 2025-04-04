@@ -666,7 +666,7 @@
               <item>
                <widget class="HyperlinkLabel" name="what_is_hide_mode_3">
                 <property name="text">
-                 <string>什么是灵活隐藏？</string>
+                 <string>什么是拖堂模式？</string>
                 </property>
                </widget>
               </item>
