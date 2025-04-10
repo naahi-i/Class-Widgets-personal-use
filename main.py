@@ -66,6 +66,7 @@ loaded_data = {}
 parts_type = []
 notification = tip_toast
 excluded_lessons = []
+never_hide_lessons = [] 
 last_notify_time = None
 notify_cooldown = 2  # 2秒内仅能触发一次通知(防止触发114514个通知导致爆炸
 
@@ -251,6 +252,14 @@ def get_excluded_lessons():
         return 
     excluded_lessons_raw = config_center.read_conf('General', 'excluded_lessons')
     excluded_lessons = excluded_lessons_raw.split(',') if excluded_lessons_raw != '' else []
+
+def get_never_hide_lessons():
+    global never_hide_lessons
+    if config_center.read_conf('General', 'never_hide_lesson') == "0":
+        never_hide_lessons = []
+        return 
+    never_hide_lessons_raw = config_center.read_conf('General', 'never_hide_lessons')
+    never_hide_lessons = never_hide_lessons_raw.split(',') if never_hide_lessons_raw != '' else []
 
 # 获取当前活动
 def get_current_lessons():  # 获取当前课程
@@ -1878,11 +1887,15 @@ class DesktopWidget(QWidget):  # 主要小组件
         get_current_lessons()
         get_current_lesson_name()
         get_excluded_lessons()
+        get_never_hide_lessons()
         get_next_lessons()
 
         if (hide_mode:=config_center.read_conf('General', 'hide')) == '1':  # 上课自动隐藏
             if current_state:
-                if not current_lesson_name in excluded_lessons:
+                # 先检查是否在不隐藏列表，再检查是否在自动隐藏列表
+                if current_lesson_name in never_hide_lessons:
+                    mgr.show_windows()
+                elif not current_lesson_name in excluded_lessons:
                     mgr.decide_to_hide()
                 else:
                     mgr.show_windows()
@@ -1903,7 +1916,10 @@ class DesktopWidget(QWidget):  # 主要小组件
                     mgr.hide_status = (False, current_state)
                     
                 if mgr.hide_status[1]:
-                    if not current_lesson_name in excluded_lessons:
+                    # 添加永不隐藏课程的判断
+                    if current_lesson_name in never_hide_lessons:
+                        mgr.show_windows()
+                    elif not current_lesson_name in excluded_lessons:
                         # 上课时使用全隐藏
                         if config_center.read_conf('General', 'hide_method') == '0':  # 正常
                             mgr.full_hide_windows()  # 使用全隐藏替代普通隐藏

@@ -875,6 +875,18 @@ class SettingsMenu(FluentWindow):
             lambda: config_center.write_conf('General', 'excluded_lessons', exclude_lesson.text()))
         # 排除课程
 
+        switch_enable_never_hide = self.adInterface.findChild(SwitchButton, 'switch_never_hide')
+        switch_enable_never_hide.setChecked(int(config_center.read_conf('General', 'never_hide_lesson')))
+        switch_enable_never_hide.checkedChanged.connect(
+            lambda checked: switch_checked('General', 'never_hide_lesson', checked))
+        # 永不隐藏特定课程
+
+        never_hide_lesson = self.adInterface.findChild(LineEdit, 'never_hide_lessons')
+        never_hide_lesson.setText(config_center.read_conf('General', 'never_hide_lessons'))
+        never_hide_lesson.textChanged.connect(
+            lambda: config_center.write_conf('General', 'never_hide_lessons', never_hide_lesson.text()))
+        # 永不隐藏课程列表
+
         switch_enable_click = self.adInterface.findChild(SwitchButton, 'switch_enable_click')
         switch_enable_click.setChecked(int(config_center.read_conf('General', 'enable_click')))
         switch_enable_click.checkedChanged.connect(lambda checked: switch_checked('General', 'enable_click', checked))
