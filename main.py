@@ -2835,6 +2835,11 @@ def setup_signal_handlers():
 def init_config():  # 重设配置文件
     config_center.write_conf('Temp', 'set_week', '')
     config_center.write_conf('Temp', 'set_schedule', '')
+
+    if config_center.read_conf('General', 'never_hide_lesson') is None:
+        config_center.write_conf('General', 'never_hide_lesson', '0')
+    if config_center.read_conf('General', 'never_hide_lessons') is None:
+        config_center.write_conf('General', 'never_hide_lessons', '')
     if config_center.read_conf('Temp', 'temp_schedule') != '':  # 修复换课重置
         copy(f'{base_directory}/config/schedule/backup.json',
              f'{base_directory}/config/schedule/{config_center.schedule_name}')
