@@ -259,9 +259,8 @@ def get_never_hide_lessons():
         never_hide_lessons = []
         return 
     never_hide_lessons_raw = config_center.read_conf('General', 'never_hide_lessons')
-    never_hide_lessons = never_hide_lessons_raw.split(',') if never_hide_lessons_raw != '' else []
+    never_hide_lessons = never_hide_lessons_raw.split(',') if never_hide_lessons_raw and never_hide_lessons_raw != '' else []
 
-# 获取当前活动
 def get_current_lessons():  # 获取当前课程
     global current_lessons
     timeline = get_timeline_data()
@@ -2713,18 +2712,17 @@ class DesktopWidget(QWidget):  # 主要小组件
 
     def closeEvent(self, event):
         if QApplication.instance().closingDown():
+            # 设置一个更安全的线程终止方式
             if hasattr(self, 'weather_thread') and self.weather_thread:
                 try:
+                    self.weather_thread.requestInterruption()  # 优先使用请求中断
                     if self.weather_thread.isRunning():
-                        self.weather_thread.terminate()
-                        self.weather_thread.quit()
-                        self.weather_thread.wait()
-                    else:
-                        logger.debug("天气线程已完成任务并销毁，无需终止")
-                except RuntimeError:
-                    logger.warning("天气线程终止过程中发生异常，可能已被销毁")
-                finally:
+                        success = self.weather_thread.wait(500)  # 最多等待500ms
+                        if not success:
+                            self.weather_thread.terminate()  # 强制终止
                     del self.weather_thread
+                except:
+                    pass
 
             if hasattr(self, 'weather_timer') and self.weather_timer:
                 try:
@@ -2761,46 +2759,6 @@ class DesktopWidget(QWidget):  # 主要小组件
         if self.opacity_animation:
             self.opacity_animation.stop()
         self.close()
-
-def closeEvent(self, event):
-    if QApplication.instance().closingDown():
-        if hasattr(self, 'weather_thread') and self.weather_thread:
-            try:
-                if self.weather_thread.isRunning():
-                    self.weather_thread.terminate()
-                    self.weather_thread.quit()
-                    self.weather_thread.wait()
-                else:
-                    logger.debug("天气线程已完成任务并销毁，无需终止")
-            except RuntimeError:
-                logger.warning("天气线程终止过程中发生异常，可能已被销毁")
-            finally:
-                del self.weather_thread
-
-        if hasattr(self, 'weather_timer') and self.weather_timer:
-            try:
-                self.weather_timer.stop()
-            except RuntimeError:
-                logger.warning("天气定时器已被销毁，跳过停止操作")
-            finally:
-                del self.weather_timer
-                
-        if hasattr(self, 'weather_carousel_timer') and self.weather_carousel_timer:
-            try:
-                self.weather_carousel_timer.stop()
-            except RuntimeError:
-                logger.warning("天气轮播定时器已被销毁，跳过停止操作")
-            finally:
-                del self.weather_carousel_timer
-                
-        event.accept()
-        stop(0)
-
-    for child in self.findChildren(QObject):
-        child.deleteLater()
-    super().closeEvent(event)
-    self.deleteLater()
-    self.destroy()
 
 def check_windows_maximize():  # 检查窗口是否最大化
     if os.name != 'nt':
